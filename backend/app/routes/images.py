@@ -1,5 +1,5 @@
 """
-API endpoints for image processing
+API endpoints for image processing with Vertical Pagination
 """
 
 import os
@@ -14,7 +14,7 @@ from backend.app.models.schemas import (
     UploadResponse, GeneratePDFRequest, GenerateDocxRequest, DocumentResponse
 )
 from backend.app.core.image_processor import ImageSequencer, MetadataExtractor
-from backend.app.core.layout_engine import GridLayoutEngine
+# We are replacing the old layout engine with our specific pagination logic
 from backend.app.core.pdf_generator import PDFGenerator
 from backend.app.core.docx_generator import WordGenerator
 from backend.app.utils.session_manager import SessionManager
@@ -33,7 +33,7 @@ async def upload_images(
     document_title: str = Query(default="Image Collection"),
     preserve_order: bool = Query(default=False)
 ):
-    """Upload images and create session"""
+    """Upload images and create session with 2-image vertical pagination"""
     try:
         image_paths = []
         image_count = 0
@@ -63,10 +63,12 @@ async def upload_images(
         if image_count == 0:
             raise HTTPException(status_code=400, detail="No valid images")
         
-        # Process
+        # 1. SEQUENCE: Sort images based on EXIF/Timestamp
         sequenced = ImageSequencer.sequence(image_paths, preserve_order)
-        layout_engine = GridLayoutEngine(page_size, grid_cols)
-        pages = layout_engine.layout(sequenced)
+        
+        # 2. PAGINATE: Group into lists of 2 for vertical stacking
+        # We use 2 here to match your PDF/Word layout requirements
+        pages = ImageSequencer.paginate(sequenced, images_per_page=2)
         
         # Create session
         session_id = session_manager.create({
@@ -74,14 +76,14 @@ async def upload_images(
             'grid_cols': grid_cols,
             'page_size': page_size,
             'document_title': document_title,
-            'pages': pages,
+            'pages': pages,  # This is now a List of Lists
             'metadata': sequenced
         })
         
         return UploadResponse(
             session_id=session_id,
             image_count=image_count,
-            page_count=len(pages),
+            page_count=len(pages),  # This will now correctly return 6 for 11 images
             grid_cols=grid_cols,
             page_size=page_size
         )
@@ -95,7 +97,7 @@ async def upload_images(
 
 @router.post("/generate-pdf")
 async def generate_pdf(request: GeneratePDFRequest):
-    """Generate PDF from session"""
+    """Generate PDF from paginated session"""
     try:
         session = session_manager.get(request.session_id)
         if not session:
@@ -105,6 +107,7 @@ async def generate_pdf(request: GeneratePDFRequest):
         output_path = os.path.join(settings.OUTPUT_DIR, output_filename)
         
         pdf_gen = PDFGenerator(session['page_size'])
+        # Generates multiple pages because session['pages'] is chunked
         pdf_gen.generate(
             session['pages'],
             output_path,
@@ -128,7 +131,7 @@ async def generate_pdf(request: GeneratePDFRequest):
 
 @router.post("/generate-docx")
 async def generate_docx(request: GenerateDocxRequest):
-    """Generate Word document from session"""
+    """Generate Word document from paginated session"""
     try:
         session = session_manager.get(request.session_id)
         if not session:

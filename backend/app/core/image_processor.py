@@ -1,5 +1,5 @@
 """
-Image processing: metadata extraction and smart sequencing
+Image processing: metadata extraction, smart sequencing, and pagination
 """
 
 import os
@@ -21,18 +21,6 @@ class MetadataExtractor:
     def extract(image_path: str) -> dict:
         """
         Extract comprehensive metadata from image
-        
-        Returns:
-            {
-                'filename': str,
-                'width': int,
-                'height': int,
-                'aspect_ratio': float,
-                'format': str,
-                'creation_timestamp': float (unix timestamp),
-                'exif_datetime': str or None,
-                'file_mtime': float
-            }
         """
         image_path = str(image_path)
         
@@ -76,7 +64,7 @@ class MetadataExtractor:
                     if isinstance(dt_str, bytes):
                         dt_str = dt_str.decode('utf-8')
                     
-                    if not metadata['exif_datetime']:  # Only if we didn't get DateTimeOriginal
+                    if not metadata['exif_datetime']:
                         try:
                             dt = datetime.strptime(dt_str, '%Y:%m:%d %H:%M:%S')
                             metadata['creation_timestamp'] = dt.timestamp()
@@ -96,18 +84,12 @@ class MetadataExtractor:
 
 
 class ImageSequencer:
-    """Smart sequencing of images based on metadata"""
+    """Smart sequencing and pagination of images"""
     
     @staticmethod
     def sequence(image_paths: List[str], preserve_order: bool = False) -> List[dict]:
         """
         Extract metadata and intelligently sequence images
-        
-        Priority:
-        1. EXIF creation date (most reliable)
-        2. File modification time
-        3. Filename (alphabetically)
-        4. Original upload order (if preserve_order=True)
         """
         metadata_list = []
         
@@ -132,3 +114,19 @@ class ImageSequencer:
             logger.info(f"Sequenced {len(sequenced)} images by timestamp")
         
         return sequenced
+
+    @staticmethod
+    def paginate(metadata_list: List[dict], images_per_page: int = 2) -> List[List[dict]]:
+        """
+        New Method: Groups the sequenced images into pages.
+        Crucial for fixing the 'Page 1 of 1' issue.
+        """
+        pages = []
+        # range(start, stop, step) -> loops in increments of images_per_page
+        for i in range(0, len(metadata_list), images_per_page):
+            # Create a sub-list (chunk) for the current page
+            page_chunk = metadata_list[i : i + images_per_page]
+            pages.append(page_chunk)
+            
+        logger.info(f"Paginated {len(metadata_list)} images into {len(pages)} pages.")
+        return pages
