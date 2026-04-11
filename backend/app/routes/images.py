@@ -21,7 +21,7 @@ from backend.app.utils.session_manager import SessionManager
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api", tags=["images"])
+router = APIRouter(tags=["images"])
 session_manager = SessionManager(settings.SESSION_DIR, settings.SESSION_TTL)
 
 

@@ -10,17 +10,7 @@
     },
     "backend": {
       "entrypoint": "backend/main.py",
-      "routePrefix": "/_/backend"
+      "routePrefix": "/api"
     }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/_/backend/api/$1"
-    },
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
-    }
-  ]
+  }
 }

@@ -1,4 +1,4 @@
-const API_BASE = "/_/backend";
+const API_BASE = "/api";
 
 export const api = {
   uploadImages: async (files, gridCols, pageSize, documentTitle, preserveOrder) => {
