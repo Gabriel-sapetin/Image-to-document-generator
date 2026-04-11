@@ -1,8 +1,10 @@
+"""
+Main application entry point
+"""
 import logging
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from config import settings
 from app.routes import images
 
@@ -22,6 +24,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://image-to-document.vercel.app",
+        "https://image-to-document-gabriel-sapetins-projects.vercel.app",
         "https://image-to-document-git-main-gabriel-sapetins-projects.vercel.app",
         "http://localhost:5173",
         "http://localhost:3000",
@@ -31,7 +34,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(images.router)
+# Router is included with /api prefix — routes in images.py use /upload, /generate-pdf etc (NO /api prefix)
+app.include_router(images.router, prefix="/api")
 
 @app.get("/")
 async def root():

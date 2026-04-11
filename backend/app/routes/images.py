@@ -7,7 +7,7 @@ from typing import List
 import logging
 
 from fastapi import APIRouter, File, UploadFile, HTTPException, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 
 from config import settings
 from app.models.schemas import (
@@ -24,7 +24,7 @@ router = APIRouter(tags=["images"])
 session_manager = SessionManager(settings.SESSION_DIR, settings.SESSION_TTL)
 
 
-@router.post("/api/upload")
+@router.post("/upload")
 async def upload_images(
     files: List[UploadFile] = File(...),
     grid_cols: int = Query(default=2, ge=1, le=4),
@@ -86,7 +86,7 @@ async def upload_images(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/generate-pdf")
+@router.post("/generate-pdf")
 async def generate_pdf(request: GeneratePDFRequest):
     """Generate PDF from paginated session"""
     try:
@@ -119,7 +119,7 @@ async def generate_pdf(request: GeneratePDFRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/generate-docx")
+@router.post("/generate-docx")
 async def generate_docx(request: GenerateDocxRequest):
     """Generate Word document from paginated session"""
     try:
@@ -151,7 +151,7 @@ async def generate_docx(request: GenerateDocxRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/download/{session_id}/{file_type}")
+@router.get("/download/{session_id}/{file_type}")
 async def download_file(session_id: str, file_type: str):
     """Download generated document"""
     try:
@@ -180,7 +180,7 @@ async def download_file(session_id: str, file_type: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/health")
+@router.get("/health")
 async def health_check():
     """Health check endpoint"""
     return {
