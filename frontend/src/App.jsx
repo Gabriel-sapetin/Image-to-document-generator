@@ -652,9 +652,10 @@ export default function App() {
 
         {/* Donation */}
         <div style={S.donationCard}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', marginBottom: '0.5rem', color: '#f87171', fontSize: '0.82rem', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            <Icon.Heart /> A STUDENT MADE SIMPLE IMAGE GRID CONVERTION
-          </div>
+          
+        <p>A STUDENT MADE SIMPLE IMAGE GRID CONVERTION </p>
+
+    
           <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: '#d8d4f0', margin: '0 0 0.5rem' }}>Built by Gabriel L.</h3>
           <p style={{ color: '#5a5870', fontSize: '0.85rem', maxWidth: '380px', margin: '0 auto 0.75rem', lineHeight: 1.6 }}>
             Hi! I'm Gab and the creator of this simple and yet helpful Web App. A small support will greatly help me as a student, thank you!
