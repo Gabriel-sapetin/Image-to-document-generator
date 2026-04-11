@@ -486,7 +486,7 @@ export default function App() {
         {/* Hero */}
         <div className="hero">
           <div className="badge"><span className="badge-dot" />Image Grid Creator</div>
-          <h1>Smart Layouts /><span className="accent">Zero Effort.</span></h1>
+          <h1>Smart Layouts<span className="accent">Zero Effort.</span></h1>
           <p>Upload photos, configure your grid, and download a pixel-perfect PDF or Word file in seconds.</p>
         </div>
 
