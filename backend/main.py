@@ -23,12 +23,11 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://image-to-document.vercel.app",
-        "https://image-to-document-gabriel-sapetins-projects.vercel.app",
-        "https://image-to-document-git-main-gabriel-sapetins-projects.vercel.app",
-        "http://localhost:5173",
-        "http://localhost:3000",
-    ],
+    "https://image-to-document-generator-8izv.vercel.app",
+    "https://image-to-document-generator-8izv-qh6377wel.vercel.app",
+    "https://image-to-document.vercel.app",
+    "http://localhost:5173",
+],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
