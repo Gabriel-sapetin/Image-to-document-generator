@@ -1,14 +1,10 @@
 import logging
-import sys
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# This line ensures Vercel can find your internal folders
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from backend.config import settings
-from backend.app.routes import images
+from config import settings
+from app.routes import images
 
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL),
@@ -22,22 +18,23 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Add CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=[
+        "https://image-to-document.vercel.app",
+        "https://image-to-document-git-main-gabriel-sapetins-projects.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routes
 app.include_router(images.router)
 
-# Root endpoint
 @app.get("/")
 async def root():
-    """API documentation"""
     return {
         'name': settings.APP_NAME,
         'version': '1.0.0',
@@ -50,19 +47,13 @@ async def root():
         }
     }
 
-
 @app.on_event("startup")
 async def startup():
-    """Startup event"""
     logger.info(f"🚀 {settings.APP_NAME} starting...")
-    logger.info(f"Debug: {settings.DEBUG}")
-
 
 @app.on_event("shutdown")
 async def shutdown():
-    """Shutdown event"""
     logger.info("🛑 Shutdown complete")
-
 
 if __name__ == "__main__":
     import uvicorn
