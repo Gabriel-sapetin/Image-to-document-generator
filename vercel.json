@@ -2,15 +2,19 @@
   "version": 2,
   "buildCommand": "cd frontend && npm install && npx vite build",
   "outputDirectory": "frontend/dist",
-  "experimentalServices": {
-    "frontend": {
-      "entrypoint": "frontend",
-      "routePrefix": "/",
-      "framework": "vite"
-    },
-    "backend": {
-      "entrypoint": "backend/main.py",
-      "routePrefix": "/api"
+  "functions": {
+    "backend/main.py": {
+      "runtime": "@vercel/python"
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "backend/main.py"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
 }

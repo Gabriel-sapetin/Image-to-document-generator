@@ -1,6 +1,11 @@
 import logging
+import sys
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+# This line ensures Vercel can find your internal folders
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.config import settings
 from backend.app.routes import images
