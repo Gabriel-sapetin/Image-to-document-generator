@@ -1,13 +1,10 @@
-// frontend/src/utils/api.js
-
-const API_BASE = '/api'; // This works for Vercel deployment
+const API_BASE = "/_/backend";
 
 export const api = {
   uploadImages: async (files, gridCols, pageSize, documentTitle, preserveOrder) => {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
     
-    // Add query parameters
     const params = new URLSearchParams({
       grid_cols: gridCols,
       page_size: pageSize,

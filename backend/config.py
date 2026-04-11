@@ -26,12 +26,22 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
     
     # --- VERCEL COMPATIBILITY START ---
-    # We use /tmp because it's the only writable directory on Vercel functions
-    BASE_DIR: str = "/tmp" if os.environ.get("VERCEL") else "uploads"
+    # Determine the writable base directory
+    @property
+    def BASE_DIR(self) -> str:
+        return "/tmp" if os.environ.get("VERCEL") else "data"
     
-    UPLOAD_DIR: str = os.path.join(BASE_DIR, "temp")
-    OUTPUT_DIR: str = os.path.join(BASE_DIR, "output")
-    SESSION_DIR: str = os.path.join(BASE_DIR, "sessions")
+    @property
+    def UPLOAD_DIR(self) -> str:
+        return os.path.join(self.BASE_DIR, "temp")
+        
+    @property
+    def OUTPUT_DIR(self) -> str:
+        return os.path.join(self.BASE_DIR, "output")
+        
+    @property
+    def SESSION_DIR(self) -> str:
+        return os.path.join(self.BASE_DIR, "sessions")
     # --- VERCEL COMPATIBILITY END ---
 
     ALLOWED_EXTENSIONS: set = {"jpg", "jpeg", "png", "gif", "webp"}
@@ -47,23 +57,19 @@ class Settings(BaseSettings):
     DEFAULT_GRID_COLS: int = 2
     DEFAULT_PAGE_SIZE: str = "A4"
     
-    # Database (optional)
-    DATABASE_URL: str = "sqlite:///./app.db"
-    
     class Config:
         """Pydantic config"""
         env_file = ".env"
         case_sensitive = True
 
-
 # Create settings instance
 settings = Settings()
 
-# Create directories if they don't exist
-# This is crucial on Vercel because /tmp starts empty for every new execution
-Path(settings.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
-Path(settings.OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
-Path(settings.SESSION_DIR).mkdir(parents=True, exist_ok=True)
+# CRITICAL: Create directories immediately
+# On Vercel, the /tmp directory is empty every time the function wakes up
+for directory in [settings.UPLOAD_DIR, settings.OUTPUT_DIR, settings.SESSION_DIR]:
+    if not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
+        logger.info(f"Created directory: {directory}")
 
-logger.info(f"Upload dir: {settings.UPLOAD_DIR}")
-logger.info(f"Output dir: {settings.OUTPUT_DIR}")
+logger.info(f"Storage base: {settings.BASE_DIR}")
