@@ -2,6 +2,6 @@
   "name": "image-to-document-monorepo",
   "version": "1.0.0",
   "scripts": {
-    "build": "cd frontend && npm install && npx vite build"
+    "build": "cd frontend && npm install && npm run build"
   }
 }
