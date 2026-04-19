@@ -2,6 +2,7 @@
 Main application entry point
 """
 import logging
+import asyncio
 import os
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,7 +18,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Rate limiter — tracks by IP address
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
@@ -26,7 +26,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Attach limiter to app state so routes can use it
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -39,8 +38,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Router with /api prefix — routes in images.py use /upload, /generate-pdf etc
 app.include_router(images.router, prefix="/api")
+
 
 @app.get("/")
 async def root():
@@ -52,19 +51,39 @@ async def root():
             'POST /api/generate-pdf': 'Generate PDF',
             'POST /api/generate-docx': 'Generate Word',
             'GET /api/download/{id}/{type}': 'Download',
+            'DELETE /api/session/{id}': 'Delete session',
             'GET /api/health': 'Health check'
         }
     }
+
+
+async def _cleanup_loop():
+    """Background task: clean expired sessions every 5 minutes."""
+    while True:
+        await asyncio.sleep(300)
+        try:
+            from app.routes.images import session_manager
+            removed = session_manager.cleanup_expired()
+            if removed:
+                logger.info(f"Auto-cleanup: removed {removed} expired session(s)")
+        except Exception as e:
+            logger.error(f"Cleanup loop error: {e}")
+
 
 @app.on_event("startup")
 async def startup():
     logger.info(f"🚀 {settings.APP_NAME} starting...")
     logger.info(f"Rate limiting: enabled (slowapi)")
     logger.info(f"Thread pool: enabled (4 workers)")
+    logger.info(f"Session storage: SQLite ({settings.SESSION_DIR})")
+    asyncio.create_task(_cleanup_loop())
+    logger.info("Background cleanup task started (every 5 min)")
+
 
 @app.on_event("shutdown")
 async def shutdown():
     logger.info("🛑 Shutdown complete")
+
 
 if __name__ == "__main__":
     import uvicorn
