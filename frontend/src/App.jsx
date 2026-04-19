@@ -78,7 +78,15 @@ export default function App() {
   const [links, setLinks] = useState(null);
   const [error, setError] = useState('');
   const [drag, setDrag] = useState(false);
+  const [toast, setToast] = useState(false);
   const fileRef = useRef(null);
+
+  const copyText = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setToast(true);
+      setTimeout(() => setToast(false), 2000);
+    });
+  };
 
   useEffect(() => {
     return () => images.forEach(img => URL.revokeObjectURL(img.preview));
@@ -439,35 +447,90 @@ export default function App() {
         /* Divider */
         .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 2rem 0 1.5rem; }
 
-        /* Donation */
-        .donation-card {
+        /* Support Section */
+        .support-card {
           background: #12111a;
           border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 14px;
-          padding: 1.75rem 1.25rem;
+          border-radius: 16px;
+          padding: 2rem 1.5rem;
           text-align: center;
           margin-bottom: 1.5rem;
         }
-        .donation-tag {
-          display: flex; align-items: center; justify-content: center;
-          gap: 0.4rem; margin-bottom: 0.5rem;
-          color: #f87171; font-size: 0.75rem; font-weight: 700;
-          letter-spacing: 0.08em; text-transform: uppercase;
+        .support-tag {
+          display: inline-flex; align-items: center;
+          gap: 6px; margin-bottom: 0.6rem;
+          padding: 4px 12px;
+          background: rgba(248,113,113,0.1);
+          border: 1px solid rgba(248,113,113,0.2);
+          border-radius: 100px;
+          color: #f87171; font-size: 0.68rem; font-weight: 700;
+          letter-spacing: 0.1em; text-transform: uppercase;
         }
-        .donation-title { font-size: 1rem; font-weight: 700; color: #d8d4f0; margin-bottom: 0.5rem; }
-        .donation-desc { color: #5a5870; font-size: 0.82rem; max-width: 340px; margin: 0 auto 0.75rem; line-height: 1.6; }
-        .gcash-badge {
-          display: inline-flex; flex-direction: column; align-items: center;
-          padding: 12px 24px;
-          background: linear-gradient(135deg, #007dfe, #00b4ff);
+        .support-title { font-size: 1.1rem; font-weight: 800; color: #f0eeff; margin-bottom: 0.4rem; }
+        .support-desc { color: #5a5870; font-size: 0.82rem; max-width: 380px; margin: 0 auto 1.5rem; line-height: 1.6; }
+
+        .payment-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 0.75rem;
+          margin-bottom: 1.25rem;
+          max-width: 520px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+        .payment-badge {
+          display: flex; flex-direction: column; align-items: center;
+          padding: 14px 16px;
           border-radius: 12px;
-          margin-bottom: 0.75rem;
-          box-shadow: 0 6px 24px rgba(0,125,254,0.3);
+          cursor: pointer;
+          transition: transform 0.15s, filter 0.15s;
+          position: relative;
         }
-        .gcash-label { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85; font-weight: 600; color: white; }
-        .gcash-num { font-size: 1.3rem; font-weight: 800; color: white; letter-spacing: 0.02em; }
-        .gcash-name { font-size: 0.75rem; font-weight: 500; opacity: 0.9; color: white; }
-        .donation-email { font-size: 0.72rem; color: #3a3850; }
+        .payment-badge:hover { transform: translateY(-2px); filter: brightness(1.1); }
+        .payment-badge.gcash { background: linear-gradient(135deg, #007dfe, #00b4ff); box-shadow: 0 6px 20px rgba(0,125,254,0.25); }
+        .payment-badge.maya { background: linear-gradient(135deg, #00b341, #00d94f); box-shadow: 0 6px 20px rgba(0,179,65,0.25); }
+        .payment-badge.paypal { background: linear-gradient(135deg, #003087, #009cde); box-shadow: 0 6px 20px rgba(0,48,135,0.25); }
+        .pay-logo { font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; font-weight: 700; color: white; margin-bottom: 2px; }
+        .pay-num { font-size: 1rem; font-weight: 800; color: white; letter-spacing: 0.01em; }
+        .pay-name { font-size: 0.7rem; font-weight: 500; opacity: 0.85; color: white; margin-top: 1px; }
+        .pay-copy {
+          position: absolute; top: 6px; right: 8px;
+          font-size: 0.55rem; background: rgba(255,255,255,0.2);
+          border-radius: 4px; padding: 2px 5px; color: white;
+          opacity: 0; transition: opacity 0.2s;
+        }
+        .payment-badge:hover .pay-copy { opacity: 1; }
+
+        .copied-toast {
+          position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+          background: #1e1c2e; border: 1px solid rgba(110,86,255,0.4);
+          border-radius: 8px; padding: 8px 18px;
+          color: #a590ff; font-size: 0.8rem; font-weight: 600;
+          z-index: 9999; animation: fadeUp 0.3s ease;
+          pointer-events: none;
+        }
+
+        .support-divider {
+          height: 1px; background: rgba(255,255,255,0.05);
+          margin: 1.25rem auto; max-width: 300px;
+        }
+        .support-other { font-size: 0.72rem; color: #3a3850; margin-bottom: 0.3rem; }
+        .support-email { font-size: 0.78rem; color: #5a5870; font-weight: 600; }
+        .support-email a { color: #6e56ff; text-decoration: none; }
+        .support-email a:hover { text-decoration: underline; }
+
+        .share-row {
+          display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem;
+        }
+        .share-btn {
+          display: inline-flex; align-items: center; gap: 0.4rem;
+          padding: 7px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);
+          background: rgba(255,255,255,0.03); color: #7c7a94;
+          font-size: 0.75rem; font-weight: 600; cursor: pointer;
+          font-family: inherit; transition: all 0.15s;
+          text-decoration: none;
+        }
+        .share-btn:hover { border-color: rgba(110,86,255,0.4); color: #a590ff; background: rgba(110,86,255,0.08); }
 
         /* Footer */
         .footer {
@@ -555,7 +618,7 @@ export default function App() {
 
               <label className="field-label">Page Size</label>
               <div className="size-row">
-                {['A4', 'Letter'].map(s => (
+                {['A4', 'Letter', 'Short', 'Long'].map(s => (
                   <button key={s} className={`size-btn${pageSize === s ? ' active' : ''}`} onClick={() => setPageSize(s)}>{s}</button>
                 ))}
               </div>
@@ -602,16 +665,52 @@ export default function App() {
 
           <div className="divider" />
 
-          {/* Donation */}
-          <div className="donation-card">
-            <h3 className="donation-title">Built by Gabriel L. Sapetin</h3>
-            <p className="donation-desc">Hi! I'm Gab and the creator of this simple and yet helpful Web App. A small support will greatly help me as a student, thank you!</p>
-            <div className="gcash-badge">
-              <span className="gcash-label">GCash</span>
-              <span className="gcash-num">0951 944 5551</span>
-              <span className="gcash-name">Graciel S.</span>
+          {/* Support */}
+          {toast && <div className="copied-toast">Copied to clipboard!</div>}
+          <div className="support-card">
+            <div className="support-tag">GO FUND ME</div>
+            <h3 className="support-title">Built by Gabriel L. Sapetin</h3>
+            <p className="support-desc">Hi! I'm Gab, creator of this free tool. I'm a student — any support means a lot. Pick any method below!</p>
+
+            <div className="payment-grid">
+              <div className="payment-badge gcash" onClick={() => copyText('09519445551')}>
+                <span className="pay-logo">GCash</span>
+                <span className="pay-num">0912 100 8476</span>
+                <span className="pay-name">Gabriel L.</span>
+                <span className="pay-copy">tap to copy</span>
+              </div>
+              <div className="payment-badge maya" onClick={() => copyText('09519445551')}>
+                <span className="pay-logo">Maya</span>
+                <span className="pay-num">0912 328 5779</span>
+                <span className="pay-name">Gabriel S.</span>
+                <span className="pay-copy">tap to copy</span>
+              </div>
+              <div className="payment-badge paypal" onClick={() => window.open('https://paypal.me/gabrielsapetin', '_blank')}>
+                <span className="pay-logo">PayPal</span>
+                <span className="pay-num">paypal.me/</span>
+                <span className="pay-name">gabrielsapetin</span>
+                <span className="pay-copy">tap to open</span>
+              </div>
             </div>
-            <p className="donation-email">gabrielsapetin9@gmail.com</p>
+
+            <div className="support-divider" />
+            <p className="support-other">Other ways to help</p>
+            <div className="share-row">
+              <a
+                className="share-btn"
+                href="https://www.facebook.com/sharer/sharer.php?u=https://image-to-document.vercel.app"
+                target="_blank" rel="noreferrer"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                Share on Facebook
+              </a>
+              <button className="share-btn" onClick={() => copyText('https://image-to-document.vercel.app')}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                Copy Link
+              </button>
+            </div>
+            <div className="support-divider" />
+            <p className="support-email">Questions? <a href="mailto:gabrielsapetin9@gmail.com">gabrielsapetin9@gmail.com</a></p>
           </div>
         </div>
 

@@ -28,26 +28,27 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["images"])
 session_manager = SessionManager(settings.SESSION_DIR, settings.SESSION_TTL)
 
-# Rate limiter — same key function as main.py
 limiter = Limiter(key_func=get_remote_address)
-
-# Thread pool — 4 workers handle 4 simultaneous PDF/Word generations
-# Without this, one slow generation blocks ALL other users
 executor = ThreadPoolExecutor(max_workers=4)
+
+VALID_PAGE_SIZES = {"A4", "LETTER", "SHORT", "LONG"}
 
 
 @router.post("/upload")
-@limiter.limit("20/minute")  # max 20 uploads per minute per IP
+@limiter.limit("20/minute")
 async def upload_images(
-    request: Request,  # required by slowapi
+    request: Request,
     files: List[UploadFile] = File(...),
     grid_cols: int = Query(default=2, ge=1, le=4),
     page_size: str = Query(default="A4"),
     document_title: str = Query(default="Image Collection"),
-    preserve_order: bool = Query(default=False)
+    preserve_order: bool = Query(default=True)   # default: upload order
 ):
-    """Upload images and create session with 2-image vertical pagination"""
+    """Upload images and create session"""
     try:
+        if page_size.upper() not in VALID_PAGE_SIZES:
+            raise HTTPException(status_code=400, detail=f"Invalid page_size. Choose from: {VALID_PAGE_SIZES}")
+
         image_paths = []
         image_count = 0
 
@@ -73,18 +74,20 @@ async def upload_images(
         if image_count == 0:
             raise HTTPException(status_code=400, detail="No valid images")
 
-        # Run sequencing in thread pool (Pillow/EXIF reading is CPU-bound)
         loop = asyncio.get_event_loop()
         sequenced = await loop.run_in_executor(
             executor,
             lambda: ImageSequencer.sequence(image_paths, preserve_order)
         )
-        pages = ImageSequencer.paginate(sequenced, images_per_page=2)
+
+        # Images per page = grid_cols * 2 rows
+        images_per_page = grid_cols * 2
+        pages = ImageSequencer.paginate(sequenced, images_per_page=images_per_page)
 
         session_id = session_manager.create({
             'image_paths': image_paths,
             'grid_cols': grid_cols,
-            'page_size': page_size,
+            'page_size': page_size.upper(),
             'document_title': document_title,
             'pages': pages,
             'metadata': sequenced
@@ -106,9 +109,9 @@ async def upload_images(
 
 
 @router.post("/generate-pdf")
-@limiter.limit("10/minute")  # max 10 PDF generations per minute per IP
+@limiter.limit("10/minute")
 async def generate_pdf(request: Request, body: GeneratePDFRequest):
-    """Generate PDF from paginated session — runs in thread pool"""
+    """Generate PDF from session"""
     try:
         session = session_manager.get(body.session_id)
         if not session:
@@ -118,9 +121,8 @@ async def generate_pdf(request: Request, body: GeneratePDFRequest):
         output_path = os.path.join(settings.OUTPUT_DIR, output_filename)
 
         pdf_gen = PDFGenerator(session['page_size'])
+        grid_cols = session.get('grid_cols', 2)
 
-        # PDF generation is CPU-heavy (ReportLab + image processing)
-        # Running it in the thread pool means other users aren't blocked
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
             executor,
@@ -128,7 +130,8 @@ async def generate_pdf(request: Request, body: GeneratePDFRequest):
                 session['pages'],
                 output_path,
                 title=body.document_title,
-                include_page_numbers=body.include_page_numbers
+                include_page_numbers=body.include_page_numbers,
+                grid_cols=grid_cols
             )
         )
 
@@ -148,9 +151,9 @@ async def generate_pdf(request: Request, body: GeneratePDFRequest):
 
 
 @router.post("/generate-docx")
-@limiter.limit("10/minute")  # max 10 Word generations per minute per IP
+@limiter.limit("10/minute")
 async def generate_docx(request: Request, body: GenerateDocxRequest):
-    """Generate Word document from paginated session — runs in thread pool"""
+    """Generate Word document from session"""
     try:
         session = session_manager.get(body.session_id)
         if not session:
@@ -160,16 +163,18 @@ async def generate_docx(request: Request, body: GenerateDocxRequest):
         output_path = os.path.join(settings.OUTPUT_DIR, output_filename)
 
         word_gen = WordGenerator()
+        grid_cols = session.get('grid_cols', 2)
+        page_size = session.get('page_size', 'A4')
 
-        # Word generation is CPU-heavy (python-docx + image embedding)
-        # Thread pool keeps the server responsive for other users
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
             executor,
             lambda: word_gen.generate(
                 session['pages'],
                 output_path,
-                title=body.document_title
+                title=body.document_title,
+                grid_cols=grid_cols,
+                page_size=page_size
             )
         )
 
@@ -189,7 +194,7 @@ async def generate_docx(request: Request, body: GenerateDocxRequest):
 
 
 @router.get("/download/{session_id}/{file_type}")
-@limiter.limit("30/minute")  # generous limit for downloads
+@limiter.limit("30/minute")
 async def download_file(request: Request, session_id: str, file_type: str):
     """Download generated document"""
     try:
