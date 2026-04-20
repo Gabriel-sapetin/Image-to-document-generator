@@ -21,6 +21,7 @@ from app.core.image_processor import ImageSequencer
 from app.core.pdf_generator import PDFGenerator
 from app.core.docx_generator import WordGenerator
 from app.utils.session_manager import SessionManager
+from app.core.analytics import Analytics
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +113,8 @@ async def upload_images(
             'metadata': sequenced
         })
 
+        Analytics.track('upload', ip=request.client.host if request.client else None, meta=str(len(image_paths)))
+
         return UploadResponse(
             session_id=session_id,
             image_count=len(image_paths),
@@ -174,6 +177,7 @@ async def generate_pdf(request: Request, body: GeneratePDFRequest):
             )
         )
 
+        Analytics.track("pdf_generated", ip=request.client.host if request.client else None)
         logger.info(f"PDF generated: {output_filename}")
         return DocumentResponse(
             file_id=f"pdf_{body.session_id}",
@@ -216,6 +220,7 @@ async def generate_docx(request: Request, body: GenerateDocxRequest):
             )
         )
 
+        Analytics.track("docx_generated", ip=request.client.host if request.client else None)
         logger.info(f"DOCX generated: {output_filename}")
         return DocumentResponse(
             file_id=f"docx_{body.session_id}",

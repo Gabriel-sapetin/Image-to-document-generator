@@ -4,72 +4,65 @@ Load settings from environment variables with defaults
 """
 
 from pydantic_settings import BaseSettings
-from pathlib import Path
 import logging
 import os
 
 logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
-    """Application settings from environment variables"""
-    
     # Application
     APP_NAME: str = "Image-to-Document API"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
-    
+
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000
-    
+
     # File Upload
     MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
-    
-    # --- VERCEL COMPATIBILITY START ---
-    # Determine the writable base directory
-    @property
-    def BASE_DIR(self) -> str:
-        return "/tmp" if os.environ.get("VERCEL") else "data"
-    
-    @property
-    def UPLOAD_DIR(self) -> str:
-        return os.path.join(self.BASE_DIR, "temp")
-        
-    @property
-    def OUTPUT_DIR(self) -> str:
-        return os.path.join(self.BASE_DIR, "output")
-        
-    @property
-    def SESSION_DIR(self) -> str:
-        return os.path.join(self.BASE_DIR, "sessions")
-    # --- VERCEL COMPATIBILITY END ---
 
-    ALLOWED_EXTENSIONS: set = {"jpg", "jpeg", "png", "gif", "webp"}
-    
+    # These are defined as properties — ignore them if in .env
+    UPLOAD_DIR: str = "uploads/temp"
+    OUTPUT_DIR: str = "uploads/output"
+    SESSION_DIR: str = "uploads/sessions"
+
     # Session Management
-    SESSION_TTL: int = 3600  # 1 hour in seconds
-    CLEANUP_INTERVAL: int = 300  # Cleanup every 5 minutes
-    
+    SESSION_TTL: int = 3600
+    CLEANUP_INTERVAL: int = 300
+
     # CORS
     CORS_ORIGINS: list = ["*"]
-    
+
     # Grid Layout Defaults
     DEFAULT_GRID_COLS: int = 2
     DEFAULT_PAGE_SIZE: str = "A4"
-    
+
+    # Database (optional)
+    DATABASE_URL: str = "sqlite:///./app.db"
+
+    # Admin Dashboard
+    ADMIN_TOKEN: str = "change-me-in-env"
+
     class Config:
-        """Pydantic config"""
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"  # ignore unknown fields from .env
+
 
 # Create settings instance
 settings = Settings()
 
-# CRITICAL: Create directories immediately
-# On Vercel, the /tmp directory is empty every time the function wakes up
+# Override dirs for Vercel
+if os.environ.get("VERCEL"):
+    settings.UPLOAD_DIR = "/tmp/temp"
+    settings.OUTPUT_DIR = "/tmp/output"
+    settings.SESSION_DIR = "/tmp/sessions"
+
+# Create directories
 for directory in [settings.UPLOAD_DIR, settings.OUTPUT_DIR, settings.SESSION_DIR]:
     if not os.path.exists(directory):
         os.makedirs(directory, exist_ok=True)
         logger.info(f"Created directory: {directory}")
 
-logger.info(f"Storage base: {settings.BASE_DIR}")
+logger.info(f"Storage base: {settings.UPLOAD_DIR}")

@@ -5,13 +5,21 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    // ✅ IMPORTANT: Proxy API calls to backend
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '/api'),
-      }
+      },
+      // proxy only the admin API calls, not the page itself
+      '/admin/stats': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/admin/donations': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
     }
   },
   build: {

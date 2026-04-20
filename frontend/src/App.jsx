@@ -9,11 +9,13 @@ const apiCall = {
   uploadImages: async (files, gridCols, pageSize, title, preserveOrder) => {
     const form = new FormData();
     files.forEach(f => form.append('files', f));
-    form.append('grid_cols', gridCols);
-    form.append('page_size', pageSize);
-    form.append('title', title);
-    form.append('preserve_order', preserveOrder);
-    const res = await fetch(`${API}/api/upload`, { method: 'POST', body: form });
+    const params = new URLSearchParams({
+      grid_cols: gridCols,
+      page_size: pageSize,
+      document_title: title,
+      preserve_order: preserveOrder,
+    });
+    const res = await fetch(`${API}/api/upload?${params}`, { method: 'POST', body: form });
     if (!res.ok) throw new Error(`Upload failed (${res.status})`);
     return res.json();
   },
@@ -166,32 +168,45 @@ export default function App() {
   const onThumbDragStart = (e, id) => {
     dragSrcId.current = id;
     e.dataTransfer.effectAllowed = 'move';
+    // Store id in dataTransfer as fallback
+    e.dataTransfer.setData('text/plain', id);
   };
   const onThumbDragOver = (e, id) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
-    setDragOverId(id);
+    if (dragOverId !== id) setDragOverId(id);
+  };
+  const onThumbDragLeave = (e) => {
+    // Only clear if leaving to outside the thumb entirely
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDragOverId(null);
+    }
   };
   const onThumbDrop = (e, targetId) => {
     e.preventDefault();
     e.stopPropagation();
     setDragOverId(null);
-    if (dragSrcId.current === targetId) return;
+    const srcId = dragSrcId.current || e.dataTransfer.getData('text/plain');
+    if (!srcId || srcId === targetId) return;
     setImages(prev => {
       const arr = [...prev];
-      const fromIdx = arr.findIndex(i => i.id === dragSrcId.current);
+      const fromIdx = arr.findIndex(i => i.id === srcId);
       const toIdx = arr.findIndex(i => i.id === targetId);
       if (fromIdx < 0 || toIdx < 0) return arr;
       const [moved] = arr.splice(fromIdx, 1);
       arr.splice(toIdx, 0, moved);
       return arr;
     });
+    // Always lock to drag order after manual reorder
+    setPreserveOrder(true);
     dragSrcId.current = null;
   };
   const onThumbDragEnd = () => { setDragOverId(null); dragSrcId.current = null; };
 
   const totalSize = images.reduce((s, i) => s + i.size, 0);
-  const pageCount = Math.ceil(images.length / (gridCols * 2)) || 0;
+  const imagesPerPage = gridCols * 2;
+  const pageCount = images.length > 0 ? Math.ceil(images.length / imagesPerPage) : 0;
 
   const generate = async () => {
     if (!images.length) { setError('Please upload at least one image.'); return; }
@@ -270,8 +285,8 @@ export default function App() {
         .thumb:active { cursor: grabbing; }
         .thumb.drag-over { border-color: #6e56ff; box-shadow: 0 0 0 2px rgba(110,86,255,0.4); transform: scale(0.97); }
         .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
-        .thumb-num { position: absolute; bottom: 2px; left: 3px; background: rgba(0,0,0,0.75); color: #e8e6f0; font-size: 0.55rem; font-weight: 800; border-radius: 3px; padding: 1px 4px; line-height: 1.4; }
-        .thumb-size { position: absolute; bottom: 2px; right: 18px; background: rgba(0,0,0,0.6); color: #a09aba; font-size: 0.5rem; border-radius: 3px; padding: 1px 3px; line-height: 1.4; }
+        .thumb-num { position: absolute; bottom: 2px; left: 3px; background: rgba(0,0,0,0.75); color: #e8e6f0; font-size: 0.55rem; font-weight: 800; border-radius: 3px; padding: 1px 4px; line-height: 1.4; pointer-events: none; }
+        .thumb-size { position: absolute; bottom: 2px; right: 18px; background: rgba(0,0,0,0.6); color: #a09aba; font-size: 0.5rem; border-radius: 3px; padding: 1px 3px; line-height: 1.4; pointer-events: none; }
         .thumb-btn { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.7); color: #e8e6f0; border: none; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
 
         /* Stats */
@@ -366,7 +381,7 @@ export default function App() {
         {/* Hero */}
         <div className="hero">
           <div className="badge"><span className="badge-dot" />Image Grid Creator</div>
-          <h1>Smart Layouts <span className="accent"> Zero Effort</span></h1>
+          <h1>Smart Layouts <span className="accent"> Zero Effort.</span></h1>
           <p>Upload photos, configure your grid, and download a pixel-perfect PDF or Word file in seconds.</p>
         </div>
 
@@ -416,10 +431,11 @@ export default function App() {
                         draggable
                         onDragStart={e => onThumbDragStart(e, img.id)}
                         onDragOver={e => onThumbDragOver(e, img.id)}
+                        onDragLeave={onThumbDragLeave}
                         onDrop={e => onThumbDrop(e, img.id)}
                         onDragEnd={onThumbDragEnd}
                       >
-                        <img src={img.preview} alt="" />
+                        <img src={img.preview} alt="" style={{ pointerEvents: 'none' }} />
                         <span className="thumb-num">#{idx + 1}</span>
                         <span className="thumb-size">{formatBytes(img.size)}</span>
                         <button className="thumb-btn" onClick={(e) => { e.stopPropagation(); remove(img.id); }}><Icon.X /></button>
@@ -435,12 +451,16 @@ export default function App() {
                   <span className="stat-label">Images</span>
                 </div>
                 <div className="stat">
+                  <span className="stat-val">{imagesPerPage}</span>
+                  <span className="stat-label">Per page</span>
+                </div>
+                <div className="stat">
                   <span className="stat-val">{pageCount}</span>
-                  <span className="stat-label">Pages est.</span>
+                  <span className="stat-label">Pages</span>
                 </div>
                 <div className="stat">
                   <span className={`stat-val${totalSize > 40 * 1024 * 1024 ? ' stat-warn' : ''}`}>{formatBytes(totalSize)}</span>
-                  <span className="stat-label">Total size</span>
+                  <span className="stat-label">Size</span>
                 </div>
               </div>
             </div>
@@ -476,7 +496,9 @@ export default function App() {
                 <div className={`toggle-track${preserveOrder ? ' on' : ''}`}>
                   <div className={`toggle-knob${preserveOrder ? ' on' : ''}`} />
                 </div>
-                <span className="toggle-label">Preserve upload order</span>
+                <span className="toggle-label">
+                  {preserveOrder ? 'Using your drag order' : 'Auto-sort by timestamp'}
+                </span>
               </div>
             </div>
           </div>
@@ -531,13 +553,13 @@ export default function App() {
             <p className="support-desc">Hi! I'm Gab, creator of this free tool. I'm a student — any support means a lot. Pick any method below!</p>
 
             <div className="payment-grid">
-              <div className="payment-badge gcash" onClick={() => copyText('09519445551', 'GCash number')}>
+              <div className="payment-badge gcash" onClick={() => copyText('09121008476', 'GCash number')}>
                 <span className="pay-logo">GCash</span>
                 <span className="pay-num">0912 100 8476</span>
                 <span className="pay-name">Gabriel L.</span>
                 <span className="pay-copy">tap to copy</span>
               </div>
-              <div className="payment-badge maya" onClick={() => copyText('09519445551', 'Maya number')}>
+              <div className="payment-badge maya" onClick={() => copyText('09123285779', 'Maya number')}>
                 <span className="pay-logo">Maya</span>
                 <span className="pay-num">0912 328 5779</span>
                 <span className="pay-name">Gabriel S.</span>
@@ -568,7 +590,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="footer">© {new Date().getFullYear()} Image-to-Doc · SNSU Student Project · All rights reserved</div>
+        <div className="footer">© {new Date().getFullYear()} Image-to-Doc · Gabriel L. · All rights reserved</div>
       </div>
     </>
   );

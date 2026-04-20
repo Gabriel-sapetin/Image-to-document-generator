@@ -10,7 +10,8 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from config import settings
-from app.routes import images
+from app.routes import images, admin
+from app.core.analytics import Analytics
 
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL),
@@ -39,6 +40,7 @@ app.add_middleware(
 )
 
 app.include_router(images.router, prefix="/api")
+app.include_router(admin.router, prefix="/admin")
 
 
 @app.get("/")
@@ -46,19 +48,10 @@ async def root():
     return {
         'name': settings.APP_NAME,
         'version': '1.0.0',
-        'endpoints': {
-            'POST /api/upload': 'Upload images',
-            'POST /api/generate-pdf': 'Generate PDF',
-            'POST /api/generate-docx': 'Generate Word',
-            'GET /api/download/{id}/{type}': 'Download',
-            'DELETE /api/session/{id}': 'Delete session',
-            'GET /api/health': 'Health check'
-        }
     }
 
 
 async def _cleanup_loop():
-    """Background task: clean expired sessions every 5 minutes."""
     while True:
         await asyncio.sleep(300)
         try:
@@ -72,12 +65,9 @@ async def _cleanup_loop():
 
 @app.on_event("startup")
 async def startup():
+    Analytics.init()
     logger.info(f"🚀 {settings.APP_NAME} starting...")
-    logger.info(f"Rate limiting: enabled (slowapi)")
-    logger.info(f"Thread pool: enabled (4 workers)")
-    logger.info(f"Session storage: SQLite ({settings.SESSION_DIR})")
     asyncio.create_task(_cleanup_loop())
-    logger.info("Background cleanup task started (every 5 min)")
 
 
 @app.on_event("shutdown")
@@ -87,9 +77,4 @@ async def shutdown():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        app,
-        host=settings.HOST,
-        port=settings.PORT,
-        reload=settings.DEBUG
-    )
+    uvicorn.run(app, host=settings.HOST, port=settings.PORT, reload=settings.DEBUG)
